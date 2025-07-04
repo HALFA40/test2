@@ -60,6 +60,8 @@ SESSION_SECRET=your-super-secret-key-here
 NODE_ENV=production
 ```
 
+**Important**: The `DATABASE_URL` error you see locally is normal - this environment variable is automatically provided by cloud platforms when you add a PostgreSQL database to your deployment.
+
 ### Optional Environment Variables
 ```bash
 # Port (usually auto-configured)
