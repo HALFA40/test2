@@ -2,6 +2,11 @@ import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import fs from "fs";
 import path from "path";
+import { fileURLToPath } from "url";
+
+// ES module compatibility for __dirname
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 app.set('trust proxy', 1);
@@ -21,12 +26,44 @@ function log(message: string, source = "express") {
 
 // Production static file serving
 function serveStatic(app: express.Express) {
-  const distPath = path.resolve(import.meta.dirname, "public");
+  // Use process.cwd() for production compatibility
+  const distPath = path.resolve(process.cwd(), "dist", "public");
   
   if (!fs.existsSync(distPath)) {
-    throw new Error(
-      `Could not find the build directory: ${distPath}, make sure to build the client first`,
-    );
+    log(`Build directory not found at ${distPath}, trying alternative paths...`);
+    
+    // Try alternative paths for different deployment environments
+    const alternativePaths = [
+      path.resolve(process.cwd(), "public"),
+      path.resolve(process.cwd(), "dist"),
+      path.resolve(__dirname, "public"),
+      path.resolve(__dirname, "..", "public")
+    ];
+    
+    let foundPath = null;
+    for (const altPath of alternativePaths) {
+      if (fs.existsSync(altPath)) {
+        foundPath = altPath;
+        break;
+      }
+    }
+    
+    if (!foundPath) {
+      log(`Warning: No static files found. Available paths: ${alternativePaths.join(", ")}`);
+      return; // Skip static file serving if no build directory found
+    }
+    
+    log(`Using static files from: ${foundPath}`);
+    app.use(express.static(foundPath));
+    
+    // fall through to index.html if the file doesn't exist
+    const indexPath = path.resolve(foundPath, "index.html");
+    if (fs.existsSync(indexPath)) {
+      app.use("*", (_req, res) => {
+        res.sendFile(indexPath);
+      });
+    }
+    return;
   }
   
   app.use(express.static(distPath));
