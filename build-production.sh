@@ -1,12 +1,18 @@
 #!/bin/bash
 
-# Build the frontend
+# Railway Production Build Script
+set -e
+
+echo "Starting production build..."
+
+# Build frontend
 echo "Building frontend..."
 npx vite build
 
-# Build the production server (without vite dependencies)
-echo "Building production server..."
-npx esbuild server/production.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/index.js
+# Build backend for production
+echo "Building backend..."
+npx esbuild server/production.ts --platform=node --packages=external --bundle --format=esm --outfile=dist/production.js
 
-echo "Production build complete!"
-echo "Files ready in dist/ directory"
+echo "Build completed successfully!"
+echo "Frontend: dist/public/"
+echo "Backend: dist/production.js"
