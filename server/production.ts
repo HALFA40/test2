@@ -106,26 +106,44 @@ app.use((req, res, next) => {
 });
 
 (async () => {
-  const server = await registerRoutes(app);
+  try {
+    const server = await registerRoutes(app);
 
-  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-    const status = err.status || err.statusCode || 500;
-    const message = err.message || "Internal Server Error";
-    res.status(status).json({ message });
-    throw err;
-  });
+    // Health check endpoint
+    app.get('/api/health', (_req, res) => {
+      res.json({ 
+        status: 'healthy', 
+        timestamp: new Date().toISOString(),
+        env: process.env.NODE_ENV || 'development'
+      });
+    });
 
-  // Production static file serving
-  serveStatic(app);
+    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+      const status = err.status || err.statusCode || 500;
+      const message = err.message || "Internal Server Error";
+      log(`Error: ${message}`);
+      res.status(status).json({ message });
+    });
 
-  // Use environment port or default to 5000
-  const port = process.env.PORT || 5000;
-  
-  server.listen({
-    port,
-    host: "0.0.0.0",
-    reusePort: true,
-  }, () => {
-    log(`serving on port ${port}`);
-  });
+    // Production static file serving
+    serveStatic(app);
+
+    // Use environment port or default to 5000
+    const port = parseInt(process.env.PORT || "5000", 10);
+    
+    server.listen(port, "0.0.0.0", () => {
+      log(`serving on port ${port}`);
+      log(`Health check available at /api/health`);
+    });
+
+    // Handle server errors
+    server.on('error', (error: any) => {
+      log(`Server error: ${error.message}`);
+      process.exit(1);
+    });
+
+  } catch (error: any) {
+    log(`Failed to start server: ${error.message}`);
+    process.exit(1);
+  }
 })();
